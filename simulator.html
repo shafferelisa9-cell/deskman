@@ -1,0 +1,2308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MalC2 - Simulator (DEMO)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --zinc-950: #09090b;
+            --zinc-900: #18181b;
+            --zinc-800: #27272a;
+            --zinc-700: #3f3f46;
+            --zinc-600: #52525b;
+            --zinc-500: #71717a;
+            --zinc-400: #a1a1aa;
+            --zinc-300: #d4d4d8;
+            --zinc-200: #e4e4e7;
+            --red-600: #dc2626;
+            --red-500: #ef4444;
+            --green-500: #10b981;
+            --yellow-500: #f59e0b;
+            --purple-500: #8b5cf6;
+            --cyan-500: #06b6d4;
+            --header-height: 3.5rem;
+            --bg-primary: var(--zinc-950);
+            --bg-secondary: var(--zinc-900);
+            --text-primary: var(--zinc-200);
+            --text-secondary: var(--zinc-300);
+            --border-color: var(--zinc-800);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .backdrop-vignette {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            background: radial-gradient(60% 50% at 50% 0%, rgba(220, 38, 38, 0.08), transparent 60%);
+            z-index: -1;
+        }
+
+        .backdrop-grid {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            background-image: linear-gradient(to right, transparent 95%, rgba(255,255,255,0.15) 96%),
+                              linear-gradient(to bottom, transparent 95%, rgba(255,255,255,0.15) 96%);
+            background-size: 40px 40px;
+            transform: skewY(-2deg);
+            z-index: -1;
+        }
+
+        header {
+            flex-shrink: 0;
+            backdrop-filter: blur(10px);
+            background-color: rgba(9, 9, 11, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            height: var(--header-height);
+        }
+
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            padding: 0 1.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.025em;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+
+        .logo-dot {
+            display: inline-block;
+            height: 0.625rem;
+            width: 0.625rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff 0%, var(--red-600) 100%);
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+
+        .c2-header-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .c2-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--green-500);
+            animation: pulse 2s infinite;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-action {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .header-action:hover {
+            color: var(--text-primary);
+            background-color: rgba(39, 39, 42, 0.3);
+        }
+
+        .header-action-logout {
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            background-color: rgba(39, 39, 42, 0.3);
+        }
+
+        .header-action-logout:hover {
+            color: var(--red-500) !important;
+            border-color: rgba(220, 38, 38, 0.2) !important;
+            background-color: rgba(220, 38, 38, 0.05) !important;
+        }
+
+        .header-action i {
+            font-size: 0.9rem;
+        }
+
+        .simulator-label {
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            background-color: rgba(39, 39, 42, 0.3);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .simulator-label:hover {
+            color: var(--red-500);
+            border-color: rgba(220, 38, 38, 0.2);
+            background-color: rgba(220, 38, 38, 0.05);
+        }
+
+        .c2-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .c2-sidebar {
+            width: 320px;
+            border-right: 1px solid var(--border-color);
+            background-color: rgba(9, 9, 11, 0.9);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar-section {
+            flex-shrink: 0;
+        }
+
+        .graph-section {
+            padding: 1rem;
+            height: 240px;
+            min-height: 240px;
+            max-height: 240px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--zinc-500);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .graph-container {
+            width: 100%;
+            height: 180px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .graph-view {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .graph-node {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 2;
+            border: 2px solid;
+            background-color: var(--zinc-900);
+        }
+
+        .graph-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+        }
+
+        .graph-node.server {
+            background-color: var(--zinc-900);
+            border-color: var(--green-500);
+            color: var(--green-500);
+            width: 44px;
+            height: 44px;
+        }
+
+        .graph-node.agent {
+            background-color: var(--zinc-900);
+            border-color: var(--red-500);
+            color: var(--red-500);
+        }
+
+        .graph-node.agent.sleeping {
+            border-color: var(--yellow-500);
+            color: var(--yellow-500);
+        }
+
+        .graph-edge {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, var(--zinc-600), var(--zinc-500));
+            transform-origin: 0 0;
+            z-index: 1;
+        }
+
+        .graph-edge.active {
+            background: linear-gradient(90deg, var(--red-500), var(--red-600));
+            height: 3px;
+            box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+        }
+
+        .graph-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.7rem;
+            color: var(--zinc-400);
+            background-color: rgba(9, 9, 11, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            z-index: 3;
+        }
+
+        .graph-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 3;
+        }
+
+        .graph-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            background-color: rgba(39, 39, 42, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .graph-btn:hover {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-color: var(--red-500);
+        }
+
+        .agent-list-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        .agent-list-container {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .agent-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .agent-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .agent-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .agent-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .agent-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .agent-item:hover {
+            background-color: rgba(220, 38, 38, 0.05);
+        }
+
+        .agent-item.active {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-left: 3px solid var(--red-600);
+        }
+
+        .agent-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(220, 38, 38, 0.1);
+            color: var(--red-600);
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .agent-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agent-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-details {
+            font-size: 0.75rem;
+            color: var(--zinc-500);
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.7rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online { background-color: var(--green-500); }
+        .status-dot.sleeping { background-color: var(--yellow-500); }
+        .status-dot.offline { background-color: var(--red-500); }
+
+        .c2-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(9, 9, 11, 0.9);
+            flex-shrink: 0;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 0.875rem;
+            color: var(--zinc-500);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background-color: rgba(39, 39, 42, 0.3);
+        }
+
+        .tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--red-600);
+            background-color: rgba(39, 39, 42, 0.2);
+        }
+
+        .panel {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .welcome-icon {
+            font-size: 4rem;
+            color: var(--red-600);
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            color: var(--zinc-400);
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        .console-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(9, 9, 11, 0.95);
+            flex-shrink: 0;
+        }
+
+        .console-title {
+            font-weight: 500;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .console-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            background-color: rgba(39, 39, 42, 0.6);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            background-color: rgba(220, 38, 38, 0.1);
+        }
+
+        .btn-primary {
+            background-color: rgba(220, 38, 38, 0.2);
+            color: var(--red-500);
+        }
+
+        .console-output {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .output-line {
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 1rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .output-timestamp {
+            color: var(--zinc-600);
+            min-width: 100px;
+            font-size: 0.75rem;
+        }
+
+        .output-content { flex: 1; }
+        .output-type { font-weight: 500; margin-right: 0.5rem; }
+        .type-info { color: var(--cyan-500); }
+        .type-success { color: var(--green-500); }
+        .type-warning { color: var(--yellow-500); }
+        .type-error { color: var(--red-500); }
+        .type-task { color: var(--purple-500); }
+        .type-output { color: var(--text-primary); white-space: pre-wrap; }
+
+        .console-input {
+            border-top: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            background-color: rgba(9, 9, 11, 0.95);
+            flex-shrink: 0;
+        }
+
+        .input-prompt {
+            color: var(--red-500);
+            font-weight: 500;
+            font-family: 'SF Mono', monospace;
+            display: flex;
+            align-items: center;
+        }
+
+        .cmd-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: 'SF Mono', monospace;
+            font-size: 0.875rem;
+            outline: none;
+        }
+
+        .cmd-input::placeholder { color: var(--zinc-600); }
+
+        .screenshot-container, .webcam-container {
+            flex: 1;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow: hidden;
+        }
+
+        .screenshot-controls, .webcam-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 0.5rem 0.75rem;
+            background: rgba(39, 39, 42, 0.3);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 0.25rem;
+            margin-left: auto;
+            background: rgba(39, 39, 42, 0.6);
+            border-radius: 0.375rem;
+            padding: 0.25rem;
+        }
+
+        .zoom-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover { background: rgba(220, 38, 38, 0.1); }
+
+        .zoom-display {
+            min-width: 50px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--zinc-400);
+            font-family: 'SF Mono', monospace;
+        }
+
+        .screenshot-frame {
+            flex: 1;
+            min-height: 0;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .screenshot-viewer {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            position: relative;
+        }
+
+        .screenshot-placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--zinc-500);
+            font-size: 0.875rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .screenshot-image-container {
+            position: absolute;
+            top: 0; left: 0;
+            transform-origin: 0 0;
+            transition: transform 0.2s ease;
+        }
+
+        .screenshot-image {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: none;
+            max-height: none;
+        }
+
+        .screenshot-info {
+            padding: 0.4rem 0.75rem;
+            border-top: 1px solid var(--border-color);
+            background: rgba(9, 9, 11, 0.9);
+            font-size: 0.65rem;
+            color: var(--zinc-400);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .filemanager-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0.75rem;
+            gap: 0.5rem;
+        }
+
+        .filemanager-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem 0.5rem 0 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filemanager-path {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .path-input {
+            background: transparent;
+            border: none;
+            color: inherit;
+            width: 100%;
+            outline: none;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .file-list-view {
+            flex: 1;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .file-list-header {
+            display: grid;
+            grid-template-columns: 40px 2fr 100px 150px 180px;
+            padding: 0.5rem 1rem;
+            background-color: rgba(39, 39, 42, 0.4);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--zinc-400);
+        }
+
+        .file-list-body {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 0.875rem;
+        }
+
+        .file-item {
+            display: grid;
+            grid-template-columns: 40px 2fr 100px 150px 180px;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            align-items: center;
+            transition: background-color 0.1s;
+        }
+
+        .file-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .file-item.selected {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-left: 2px solid var(--red-600);
+        }
+
+        .file-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--zinc-500);
+            font-size: 1.1rem;
+        }
+
+        .file-item.folder .file-icon { color: var(--yellow-500); }
+
+        .logs-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .logs-output {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .logs-controls {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+            background-color: rgba(9, 9, 11, 0.95);
+        }
+
+        .settings-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .settings-header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .settings-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .settings-subtitle {
+            color: var(--zinc-400);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            max-width: 800px;
+        }
+
+        .settings-card {
+            background: rgba(39, 39, 42, 0.3);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .server-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--zinc-500);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .info-value {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .info-value.online { color: var(--green-500); }
+        .info-value.offline { color: var(--red-500); }
+
+        .form-group { margin-bottom: 1.25rem; }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--zinc-300);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(9, 9, 11, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--red-500);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--zinc-500);
+            margin-top: 0.375rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-success {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--green-500);
+        }
+
+        .btn-success:hover { background-color: rgba(16, 185, 129, 0.3); }
+
+        .btn-secondary {
+            background-color: rgba(39, 39, 42, 0.6);
+            color: var(--zinc-300);
+        }
+
+        .build-log {
+            margin-top: 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            min-height: 150px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.8rem;
+            padding: 1rem;
+        }
+
+        .log-line {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .log-line.info { color: var(--cyan-500); background: rgba(6, 182, 212, 0.1); }
+        .log-line.success { color: var(--green-500); background: rgba(16, 185, 129, 0.1); }
+        .log-line.error { color: var(--red-500); background: rgba(220, 38, 38, 0.1); }
+        .log-line.warning { color: var(--yellow-500); background: rgba(245, 158, 11, 0.1); }
+
+        /* Simulated image placeholder */
+        .simulated-image {
+            background: linear-gradient(135deg, var(--zinc-800), var(--zinc-900));
+            border: 2px dashed var(--zinc-700);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: var(--zinc-500);
+            font-size: 0.875rem;
+        }
+
+        .simulated-image i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .c2-sidebar { display: none; }
+            .c2-header-info { display: none; }
+            .tab-bar { overflow-x: auto; }
+            .console-actions { display: none; }
+            .file-list-header { display: none; }
+            .file-item { grid-template-columns: 40px 1fr; }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background-color: var(--zinc-900);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            color: var(--red-500);
+        }
+
+        .modal-header i {
+            font-size: 1.25rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            color: var(--zinc-300);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+            background-color: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .modal-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .modal-btn-confirm {
+            background-color: rgba(220, 38, 38, 0.2);
+            border-color: var(--red-600);
+            color: var(--red-500);
+        }
+
+        .modal-btn-confirm:hover {
+            background-color: rgba(220, 38, 38, 0.3);
+        }
+
+        /* Fit to Screen Button */
+        .fit-btn {
+            margin-left: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.65rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="backdrop-vignette"></div>
+    <div class="backdrop-grid"></div>
+
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="logo">
+                <span class="logo-dot"></span> MalC2
+                <span class="simulator-label">Simulator</span>
+            </a>
+            <div class="c2-header-info">
+                <div class="c2-status">
+                    <span class="status-indicator"></span>
+                    <span id="listener-info">Listening on 3 ports: 1337, 8080, 443</span>
+                </div>
+                <div class="header-actions">
+                    <div class="header-action">
+                        <span>Agents: <span id="agent-count">4</span></span>
+                    </div>
+                    <div class="header-action" onclick="toggleSettings()">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </div>
+                    <div class="header-action header-action-logout" title="Logout" onclick="showLogoutModal()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="c2-container">
+        <div class="c2-sidebar">
+            <div class="sidebar-section graph-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Network Graph</span>
+                </div>
+                <div class="graph-container">
+                    <div class="graph-view" id="graph-view">
+                        <div class="graph-info" id="graph-info">4 agents connected</div>
+                        <div class="graph-controls">
+                            <button class="graph-btn" onclick="arrangeGraph('circle')" title="Circle Layout">
+                                <i class="fas fa-circle"></i>
+                            </button>
+                            <button class="graph-btn" onclick="arrangeGraph('hierarchy')" title="Hierarchy Layout">
+                                <i class="fas fa-sitemap"></i>
+                            </button>
+                            <button class="graph-btn" onclick="refreshGraph()" title="Refresh Graph">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section agent-list-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-robot"></i>
+                    <span>Active Beacons</span>
+                </div>
+                <div class="agent-list-container">
+                    <div class="agent-list" id="agent-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="c2-main">
+            <div class="tab-bar">
+                <div class="tab active" data-tab="console">Interactive Console</div>
+                <div class="tab" data-tab="screenshot">Screenshot</div>
+                <div class="tab" data-tab="webcam">Webcam</div>
+                <div class="tab" data-tab="filemanager">File Manager</div>
+                <div class="tab" data-tab="logs">Event Logs</div>
+            </div>
+
+            <div id="console-panel" class="panel active">
+                <div class="console-header">
+                    <div class="console-title">
+                        <i class="fas fa-terminal"></i>
+                        <span id="agent-display">DESKTOP-ABC123 | CORP\john.smith</span>
+                    </div>
+                    <div class="console-actions">
+                        <button class="btn" onclick="executeQuickCommand('whoami')">
+                            <i class="fas fa-user"></i> Whoami
+                        </button>
+                        <button class="btn" onclick="executeQuickCommand('clipboard')">
+                            <i class="fas fa-clipboard"></i> Clipboard
+                        </button>
+                        <button class="btn" onclick="executeQuickCommand('checkav')">
+                            <i class="fas fa-shield"></i> CheckAV
+                        </button>
+                        <button class="btn" onclick="executeQuickCommand('uptime')">
+                            <i class="fas fa-clock"></i> Uptime
+                        </button>
+                        <button class="btn" onclick="clearConsole()">
+                            <i class="fas fa-broom"></i> Clear
+                        </button>
+                        <button class="btn btn-primary" onclick="executeQuickCommand('help')">
+                            <i class="fas fa-question-circle"></i> Help
+                        </button>
+                    </div>
+                </div>
+
+                <div class="console-output" id="console-output"></div>
+
+                <div class="console-input">
+                    <span class="input-prompt">malc2></span>
+                    <input type="text" class="cmd-input" id="cmd-input" placeholder="Type command and press Enter..." autocomplete="off">
+                </div>
+            </div>
+
+            <div id="screenshot-panel" class="panel">
+                <div class="screenshot-container">
+                    <div class="screenshot-controls">
+                        <button class="btn" onclick="takeScreenshot()">
+                            <i class="fas fa-camera"></i> Capture
+                        </button>
+                        <button class="btn" onclick="saveScreenshot()">
+                            <i class="fas fa-download"></i> Save
+                        </button>
+                        <button class="btn" onclick="refreshScreenshot()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn fit-btn" onclick="fitToScreen()" title="Fit to screen">
+                            <i class="fas fa-expand"></i> Fit
+                        </button>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoomOut()"><i class="fas fa-search-minus"></i></button>
+                            <div class="zoom-display" id="zoom-display">100%</div>
+                            <button class="zoom-btn" onclick="zoomIn()"><i class="fas fa-search-plus"></i></button>
+                            <button class="zoom-btn" onclick="resetZoom()"><i class="fas fa-undo"></i></button>
+                        </div>
+                    </div>
+                    <div class="screenshot-frame">
+                        <div class="screenshot-viewer" id="screenshot-viewer">
+                            <div class="screenshot-placeholder" id="screenshot-placeholder">
+                                <i class="fas fa-camera" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5;"></i>
+                                <div style="margin-bottom: 0.25rem;">Click "Capture" to load screenshot</div>
+                                <div style="font-size: 0.7rem;">Real demo image from img folder</div>
+                            </div>
+                            <div class="screenshot-image-container" id="screenshot-image-container" style="display: none;">
+                                <img src="img/screenshot-demo.png" alt="Screenshot" style="max-width: 100%; height: auto; display: block;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="webcam-panel" class="panel">
+                <div class="webcam-container">
+                    <div class="webcam-controls">
+                        <button class="btn" onclick="takeWebcamSnapshot()">
+                            <i class="fas fa-camera"></i> Capture
+                        </button>
+                        <button class="btn" onclick="saveWebcamImage()">
+                            <i class="fas fa-download"></i> Save
+                        </button>
+                        <button class="btn" onclick="refreshWebcam()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn fit-btn" onclick="fitWebcamToScreen()" title="Fit to screen">
+                            <i class="fas fa-expand"></i> Fit
+                        </button>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" onclick="zoomOutWebcam()"><i class="fas fa-search-minus"></i></button>
+                            <div class="zoom-display" id="webcam-zoom-display">100%</div>
+                            <button class="zoom-btn" onclick="zoomInWebcam()"><i class="fas fa-search-plus"></i></button>
+                            <button class="zoom-btn" onclick="resetWebcamZoom()"><i class="fas fa-undo"></i></button>
+                        </div>
+                    </div>
+                    <div class="screenshot-frame">
+                        <div class="screenshot-viewer" id="webcam-viewer">
+                            <div class="screenshot-placeholder" id="webcam-placeholder">
+                                <i class="fas fa-video" style="font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5;"></i>
+                                <div style="margin-bottom: 0.25rem;">Click "Capture" to load webcam image</div>
+                                <div style="font-size: 0.7rem;">Real demo image from img folder</div>
+                            </div>
+                            <div class="screenshot-image-container" id="webcam-image-container" style="display: none;">
+                                <img src="img/webcam-demo.png" alt="Webcam" style="max-width: 100%; height: auto; display: block;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="filemanager-panel" class="panel">
+                <div class="filemanager-container">
+                    <div class="filemanager-header">
+                        <button class="btn" onclick="navigateBack()" title="Back"><i class="fas fa-arrow-left"></i></button>
+                        <button class="btn" onclick="navigateUp()" title="Up Level"><i class="fas fa-level-up-alt"></i></button>
+                        <div class="filemanager-path">
+                            <i class="fas fa-desktop"></i>
+                            <input type="text" class="path-input" id="current-path" value="C:\Users\john.smith\Documents" readonly>
+                        </div>
+                        <button class="btn" onclick="refreshFileManager()" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn" onclick="simulateUpload()" title="Upload"><i class="fas fa-upload"></i></button>
+                    </div>
+                    <div class="file-list-view">
+                        <div class="file-list-header">
+                            <div></div>
+                            <div>Name</div>
+                            <div>Size</div>
+                            <div>Type</div>
+                            <div>Date Modified</div>
+                        </div>
+                        <div class="file-list-body" id="file-list-body"></div>
+                    </div>
+                    <div class="logs-controls" style="justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--zinc-500);" id="file-count">0 items</span>
+                        <span style="font-size: 0.7rem; color: var(--zinc-600);">Double-click file to download</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="logs-panel" class="panel">
+                <div class="logs-container">
+                    <div class="logs-output" id="logs-output"></div>
+                    <div class="logs-controls">
+                        <button class="btn" onclick="clearLogs()">
+                            <i class="fas fa-broom"></i> Clear Logs
+                        </button>
+                        <button class="btn" onclick="exportLogs()">
+                            <i class="fas fa-download"></i> Export Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-panel" class="panel">
+                <div class="settings-container">
+                    <div class="settings-header">
+                        <h1 class="settings-title">
+                            <i class="fas fa-cogs"></i> Settings
+                        </h1>
+                        <p class="settings-subtitle">Configure server settings and build custom client executables.</p>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-server"></i> Server Information</h2>
+                            </div>
+                            <div class="server-info">
+                                <div class="info-item">
+                                    <div class="info-label">Status</div>
+                                    <div class="info-value online">Running</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Active Listeners</div>
+                                    <div class="info-value">1</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Active Agents</div>
+                                    <div class="info-value">4</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Server Uptime</div>
+                                    <div class="info-value" id="server-uptime">02:34:18</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Listeners Management Card -->
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <h2 class="card-title">
+                                    <i class="fas fa-network-wired"></i> Listeners Management
+                                </h2>
+                            </div>
+                            <p class="card-description" style="color: var(--zinc-400); font-size: 0.875rem; margin-bottom: 1rem;">
+                                Manage C2 server TCP listeners. You can have multiple listeners on different ports.
+                            </p>
+
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-plus-circle"></i> Start New Listener
+                                </label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="number" class="form-control" placeholder="1337" value="1337" style="flex: 1;">
+                                    <button class="btn btn-primary" onclick="addLog('Listener started on port 1337', 'success')">
+                                        <i class="fas fa-play"></i> Start
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="listeners-list" style="margin-top: 1rem;">
+                                <div style="font-size: 0.75rem; color: var(--zinc-400); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                                    Active Listeners (3)
+                                </div>
+                                <div style="background: rgba(0, 0, 0, 0.2); border-radius: 0.375rem; border: 1px solid var(--border-color);">
+                                    <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: 500; color: var(--text-primary);">Port 1337</div>
+                                            <div style="font-size: 0.75rem; color: var(--green-500);">● Active</div>
+                                        </div>
+                                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="addLog('Listener on port 1337 stopped', 'warning')">
+                                            <i class="fas fa-stop"></i> Stop
+                                        </button>
+                                    </div>
+                                    <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: 500; color: var(--text-primary);">Port 8080</div>
+                                            <div style="font-size: 0.75rem; color: var(--green-500);">● Active</div>
+                                        </div>
+                                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="addLog('Listener on port 8080 stopped', 'warning')">
+                                            <i class="fas fa-stop"></i> Stop
+                                        </button>
+                                    </div>
+                                    <div style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: 500; color: var(--text-primary);">Port 443</div>
+                                            <div style="font-size: 0.75rem; color: var(--green-500);">● Active</div>
+                                        </div>
+                                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="addLog('Listener on port 443 stopped', 'warning')">
+                                            <i class="fas fa-stop"></i> Stop
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-hammer"></i> Build Client</h2>
+                            </div>
+                            <p style="color: var(--zinc-400); font-size: 0.875rem; margin-bottom: 1rem;">Build a custom client executable with specified configuration.</p>
+                            
+                            <div class="form-group">
+                                <label>Server IP Address</label>
+                                <input type="text" class="form-control" value="192.168.1.100" readonly>
+                                <div class="form-hint">The IP address the client will connect to</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Server Port</label>
+                                <input type="text" class="form-control" value="8443" readonly>
+                                <div class="form-hint">The port the client will connect on</div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button class="btn btn-success" onclick="simulateBuild()">
+                                    <i class="fas fa-hammer"></i> Build Client
+                                </button>
+                                <button class="btn btn-secondary">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+
+                            <div class="build-log" id="build-log">
+                                <div style="color: var(--zinc-500); text-align: center; padding: 2rem;">
+                                    <i class="fas fa-code" style="font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.5;"></i>
+                                    <p>Click "Build Client" to simulate build process</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout Confirmation Modal -->
+            <div id="logoutModal" class="modal-overlay">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Confirm Disconnect</span>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to terminate the secure session?
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-btn modal-btn-cancel" onclick="hideLogoutModal()">Cancel</button>
+                        <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+    <script>
+        // ============ ZOOM VARIABLES ============
+        let zoomLevel = 100;
+        let currentImageDimensions = { width: 0, height: 0 };
+        let webcamZoomLevel = 100;
+        let webcamImageDimensions = { width: 0, height: 0 };
+
+        function showLogoutModal() {
+            const modal = document.getElementById('logoutModal');
+            modal.classList.add('active');
+        }
+
+        function hideLogoutModal() {
+            const modal = document.getElementById('logoutModal');
+            modal.classList.remove('active');
+        }
+
+        function confirmLogout() {
+            addLog('Operator logged out', 'info');
+            document.body.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--zinc-950);color:var(--zinc-400);flex-direction:column;gap:1rem;">
+                    <i class="fas fa-check-circle" style="font-size:3rem;color:var(--green-500);"></i>
+                    <h2>Session Terminated</h2>
+                    <p>You have been successfully logged out.</p>
+                    <button onclick="location.reload()" class="btn" style="margin-top:1rem;">
+                        <i class="fas fa-redo"></i> Return to Login
+                    </button>
+                </div>
+            `;
+        }
+
+        // Close modal on outside click
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('logoutModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideLogoutModal();
+                    }
+                });
+            }
+        });
+
+        // ============ DUMMY DATA ============
+        const dummyAgents = [
+            { id: 'AGT-001', hostname: 'SRV-FILE-01', username: 'NT AUTHORITY\\SYSTEM', ip: '192.168.1.10', os: 'Server 2019', status: 'online', lastSeen: '30s ago' },
+            { id: 'AGT-002', hostname: 'SRV-DB-01', username: 'NT AUTHORITY\\SYSTEM', ip: '192.168.1.11', os: 'Server 2019', status: 'sleeping', lastSeen: '1h ago' },
+            { id: 'AGT-003', hostname: 'SRV-WEB-01', username: 'NT AUTHORITY\\SYSTEM', ip: '192.168.1.12', os: 'Server 2019', status: 'online', lastSeen: '2m ago' },
+            { id: 'AGT-004', hostname: 'SRV-FILE-01', username: 'NT AUTHORITY\\SYSTEM', ip: '192.168.1.10', os: 'Server 2019', status: 'online', lastSeen: '30s ago' }
+        ];
+
+        const dummyFiles = {
+            'C:\\Users\\john.smith\\Documents': [
+                { name: 'Projects', type: 'folder', size: '-', date: '2024-01-15 09:30' },
+                { name: 'Reports', type: 'folder', size: '-', date: '2024-01-14 14:22' },
+                { name: 'Q1_Financial.xlsx', type: 'Excel', size: '2.4 MB', date: '2024-01-12 11:45' },
+                { name: 'presentation.pptx', type: 'PowerPoint', size: '8.7 MB', date: '2024-01-10 16:30' },
+                { name: 'notes.txt', type: 'Text', size: '12 KB', date: '2024-01-08 09:15' },
+                { name: 'budget_2024.xlsx', type: 'Excel', size: '1.8 MB', date: '2024-01-05 13:20' },
+                { name: 'contract.pdf', type: 'PDF', size: '456 KB', date: '2024-01-03 10:00' }
+            ],
+            'C:\\Users\\john.smith\\Documents\\Projects': [
+                { name: '..', type: 'folder', size: '-', date: '-' },
+                { name: 'source_code', type: 'folder', size: '-', date: '2024-01-15 08:00' },
+                { name: 'README.md', type: 'Markdown', size: '4 KB', date: '2024-01-15 09:30' },
+                { name: 'main.py', type: 'Python', size: '15 KB', date: '2024-01-14 16:45' },
+                { name: 'config.json', type: 'JSON', size: '2 KB', date: '2024-01-14 11:20' }
+            ],
+            'C:\\Users\\john.smith\\Documents\\Reports': [
+                { name: '..', type: 'folder', size: '-', date: '-' },
+                { name: 'monthly_report_jan.pdf', type: 'PDF', size: '1.2 MB', date: '2024-01-31 17:00' },
+                { name: 'security_audit.pdf', type: 'PDF', size: '3.5 MB', date: '2024-01-25 14:30' },
+                { name: 'inventory.xlsx', type: 'Excel', size: '890 KB', date: '2024-01-20 09:00' }
+            ],
+            'C:\\': [
+                { name: 'Program Files', type: 'folder', size: '-', date: '2023-06-15 10:00' },
+                { name: 'ProgramData', type: 'folder', size: '-', date: '2023-06-15 10:00' },
+                { name: 'Users', type: 'folder', size: '-', date: '2023-06-15 10:00' },
+                { name: 'Windows', type: 'folder', size: '-', date: '2023-06-15 10:00' },
+                { name: 'pagefile.sys', type: 'System', size: '8.0 GB', date: '2024-02-14 12:00' }
+            ]
+        };
+
+        const commandResponses = {
+            'whoami': 'corp\\john.smith',
+            'hostname': 'DESKTOP-ABC123',
+            'osinfo': 'Microsoft Windows 10 Pro (10.0.19045) x64',
+            'priv': '[*] Current Privileges:\\n    SeShutdownPrivilege: Enabled\\n    SeChangeNotifyPrivilege: Enabled\\n    SeUndockPrivilege: Enabled',
+            'checkav': '[*] Security Products:\\n    Windows Defender: Active (Real-time protection: ON)\\n    Windows Firewall: ON',
+            'netinfo': 'Ethernet adapter Ethernet:\\n   IPv4 Address: 192.168.1.45\\n   Subnet Mask: 255.255.255.0\\n   Default Gateway: 192.168.1.1\\n   DNS Servers: 192.168.1.1, 8.8.8.8',
+            'uptime': 'System uptime: 2 days, 14 hours, 32 minutes',
+            'users': 'USER INFORMATION\\n----------------\\nUsername: john.smith\\nDomain: CORP\\nGroups: Domain Users, Remote Desktop Users',
+            'clipboard': '[*] Clipboard Contents:\\n    https://portal.corp.internal/dashboard',
+            'processes': '[*] Top Processes:\\n    chrome.exe (12 processes)\\n    explorer.exe\\n    code.exe\\n    slack.exe\\n    outlook.exe',
+            'drives': 'Logical Drives:\\n    C:\\ - Fixed (HDD/SSD)\\n    D:\\ - CD/DVD Drive\\n    Z:\\ - Network Drive (\\\\fileserver\\shared)',
+            'ls': 'Directory listing complete. 7 items found.',
+            'help': `Available Commands:\\n  whoami    - Display current user\\n  hostname  - Display system hostname\\n  osinfo    - Display OS information\\n  priv      - Check current privileges\\n  checkav   - Check security products\\n  netinfo   - Display network information\\n  uptime    - Show system uptime\\n  users     - List user information\\n  clipboard - View clipboard contents\\n  processes - List running processes\\n  drives    - List available drives\\n  ls        - List directory contents\\n  download  - Download file from target\\n  upload    - Upload file to target\\n  exit      - Close session`
+        };
+
+        // ============ STATE ============
+        let selectedAgent = dummyAgents[0];
+        let currentPath = 'C:\\Users\\john.smith\\Documents';
+        let serverUptime = { hours: 2, minutes: 34, seconds: 18 };
+
+        // ============ INITIALIZATION ============
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAgentList();
+            renderGraph();
+            addConsoleOutput('MalC2 Framework v2.1 (SIMULATOR MODE)', 'info');
+            addConsoleOutput('Connected to demo environment with 4 simulated agents', 'success');
+            addConsoleOutput('All commands are simulated for demonstration purposes', 'warning');
+            renderFiles();
+            renderLogs();
+            startUptimeCounter();
+
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    const panelId = tab.dataset.tab + '-panel';
+                    const panel = document.getElementById(panelId);
+                    if (panel) panel.classList.add('active');
+                });
+            });
+
+            // Command input
+            document.getElementById('cmd-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && this.value.trim()) {
+                    executeCommand(this.value.trim());
+                    this.value = '';
+                }
+            });
+        });
+
+        // ============ AGENT FUNCTIONS ============
+        function renderAgentList() {
+            const container = document.getElementById('agent-list');
+            container.innerHTML = dummyAgents.map(agent => `
+                <div class="agent-item ${selectedAgent.id === agent.id ? 'active' : ''}" onclick="selectAgent('${agent.id}')">
+                    <div class="agent-icon">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+                    <div class="agent-info">
+                        <div class="agent-name">${agent.hostname}</div>
+                        <div class="agent-details">
+                            <span>${agent.ip}</span>
+                            <span>${agent.os}</span>
+                        </div>
+                        <div class="agent-status">
+                            <span class="status-dot ${agent.status}"></span>
+                            <span style="color: var(--${agent.status === 'online' ? 'green' : agent.status === 'sleeping' ? 'yellow' : 'red'}-500);">${agent.status}</span>
+                            <span style="margin-left: auto;">${agent.lastSeen}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectAgent(agentId) {
+            selectedAgent = dummyAgents.find(a => a.id === agentId);
+            document.getElementById('agent-display').textContent = `${selectedAgent.hostname} | ${selectedAgent.username}`;
+            renderAgentList();
+            addConsoleOutput(`Switched to agent: ${selectedAgent.hostname} (${selectedAgent.ip})`, 'info');
+            addLog(`Operator switched to agent ${selectedAgent.id}`, 'info');
+        }
+
+        function renderGraph() {
+            const container = document.getElementById('graph-view');
+            const existing = container.querySelectorAll('.graph-node, .graph-edge');
+            existing.forEach(el => el.remove());
+
+            // Get actual container dimensions
+            const rect = container.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            
+            // Calculate center based on actual container size
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Server node (center)
+            const serverNode = document.createElement('div');
+            serverNode.className = 'graph-node server';
+            serverNode.innerHTML = '<i class="fas fa-server"></i>';
+            serverNode.style.left = (centerX - 22) + 'px';
+            serverNode.style.top = (centerY - 22) + 'px';
+            container.appendChild(serverNode);
+
+            // Calculate radius based on container size (smaller of width/height)
+            const radius = Math.min(width, height) * 0.35;
+            const nodeSize = 36;
+            const halfNode = nodeSize / 2;
+            
+            let currentGraphLayout = 'circle';
+
+            if (currentGraphLayout === 'circle') {
+                // Circle layout
+                dummyAgents.forEach((agent, i) => {
+                    const angle = (i * 2 * Math.PI) / dummyAgents.length - Math.PI / 2;
+                    const x = centerX + radius * Math.cos(angle) - halfNode;
+                    const y = centerY + radius * Math.sin(angle) - halfNode;
+
+                    const node = document.createElement('div');
+                    node.className = `graph-node agent ${agent.status}`;
+                    node.innerHTML = '<i class="fas fa-desktop"></i>';
+                    node.style.left = x + 'px';
+                    node.style.top = y + 'px';
+                    node.title = `${agent.hostname}\n${agent.ip}`;
+                    node.onclick = () => selectAgent(agent.id);
+                    node.style.cursor = 'pointer';
+                    container.appendChild(node);
+
+                    // Edge from server to agent
+                    const edge = document.createElement('div');
+                    edge.className = 'graph-edge';
+                    const edgeX = centerX + (radius - halfNode) * Math.cos(angle);
+                    const edgeY = centerY + (radius - halfNode) * Math.sin(angle);
+                    const length = Math.sqrt(Math.pow(edgeX - centerX, 2) + Math.pow(edgeY - centerY, 2));
+                    const rotation = Math.atan2(edgeY - centerY, edgeX - centerX) * 180 / Math.PI;
+                    
+                    edge.style.left = centerX + 'px';
+                    edge.style.top = centerY + 'px';
+                    edge.style.width = length + 'px';
+                    edge.style.transform = `rotate(${rotation}deg)`;
+                    edge.classList.toggle('active', agent.status === 'online');
+                    container.insertBefore(edge, serverNode);
+                });
+            } else if (currentGraphLayout === 'hierarchy') {
+                // Hierarchy layout - server at top, agents below in a row
+                const agentSpacing = Math.min(width / (dummyAgents.length + 1), 70);
+                const startX = centerX - ((dummyAgents.length - 1) * agentSpacing) / 2;
+                const agentY = centerY + radius * 0.6;
+
+                dummyAgents.forEach((agent, i) => {
+                    const x = startX + i * agentSpacing - halfNode;
+                    const y = agentY - halfNode;
+
+                    const node = document.createElement('div');
+                    node.className = `graph-node agent ${agent.status}`;
+                    node.innerHTML = '<i class="fas fa-desktop"></i>';
+                    node.style.left = x + 'px';
+                    node.style.top = y + 'px';
+                    node.title = `${agent.hostname}\n${agent.ip}`;
+                    node.onclick = () => selectAgent(agent.id);
+                    node.style.cursor = 'pointer';
+                    container.appendChild(node);
+
+                    // Edge from server to agent
+                    const edge = document.createElement('div');
+                    edge.className = 'graph-edge';
+                    const serverEdgeX = centerX;
+                    const serverEdgeY = centerY + 22;
+                    const agentEdgeX = x + halfNode;
+                    const agentEdgeY = y + halfNode;
+                    const length = Math.sqrt(Math.pow(agentEdgeX - serverEdgeX, 2) + Math.pow(agentEdgeY - serverEdgeY, 2));
+                    const rotation = Math.atan2(agentEdgeY - serverEdgeY, agentEdgeX - serverEdgeX) * 180 / Math.PI;
+                    
+                    edge.style.left = serverEdgeX + 'px';
+                    edge.style.top = serverEdgeY + 'px';
+                    edge.style.width = length + 'px';
+                    edge.style.transform = `rotate(${rotation}deg)`;
+                    edge.classList.toggle('active', agent.status === 'online');
+                    container.insertBefore(edge, serverNode);
+                });
+            }
+        }
+
+        function arrangeGraph(layout) {
+            currentGraphLayout = layout;
+            addLog(`Graph layout changed to: ${layout}`, 'info');
+            renderGraph();
+        }
+
+        function refreshGraph() {
+            addLog('Graph refreshed', 'info');
+            renderGraph();
+        }
+
+        // Handle window resize to redraw graph
+        window.addEventListener('resize', () => {
+            renderGraph();
+        });
+
+        // ============ CONSOLE FUNCTIONS ============
+        function addConsoleOutput(text, type = 'output') {
+            const container = document.getElementById('console-output');
+            const now = new Date();
+            const time = now.toTimeString().slice(0, 8);
+            
+            const line = document.createElement('div');
+            line.className = 'output-line';
+            line.innerHTML = `
+                <span class="output-timestamp">[${time}]</span>
+                <div class="output-content">
+                    <span class="output-type type-${type}">[${type.toUpperCase()}]</span>
+                    <span class="type-output">${text.replace(/\\n/g, '<br>')}</span>
+                </div>
+            `;
+            container.appendChild(line);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function executeCommand(cmd) {
+            addConsoleOutput(`> ${cmd}`, 'task');
+            
+            // Simulate network delay
+            setTimeout(() => {
+                const lowerCmd = cmd.toLowerCase().split(' ')[0];
+                
+                if (commandResponses[lowerCmd]) {
+                    addConsoleOutput(commandResponses[lowerCmd], 'output');
+                } else if (cmd.toLowerCase().startsWith('ls') || cmd.toLowerCase().startsWith('dir')) {
+                    addConsoleOutput(`Directory: ${currentPath}\\n\\n${dummyFiles[currentPath]?.map(f => `  ${f.type === 'folder' ? '[' + f.name + ']' : f.name} ${f.size} ${f.date}`).join('\\n') || '  No files found'}\\n\\nTotal: ${dummyFiles[currentPath]?.length || 0} items`, 'output');
+                } else if (cmd.toLowerCase().startsWith('download ')) {
+                    const filename = cmd.split(' ').slice(1).join(' ');
+                    addConsoleOutput(`Downloading ${filename}...`, 'info');
+                    setTimeout(() => {
+                        addConsoleOutput(`Download complete: ${filename} (simulated)`, 'success');
+                        addLog(`File downloaded: ${filename}`, 'success');
+                    }, 1000);
+                } else if (cmd.toLowerCase() === 'exit') {
+                    addConsoleOutput('Session terminated. (Demo mode - session restored)', 'warning');
+                } else {
+                    addConsoleOutput(`Command executed: ${cmd}\\n(Note: This is a simulated response. Command output would appear here in production.)`, 'output');
+                }
+            }, 300 + Math.random() * 700);
+        }
+
+        function executeQuickCommand(cmd) {
+            document.getElementById('cmd-input').value = cmd;
+            executeCommand(cmd);
+        }
+
+        function clearConsole() {
+            document.getElementById('console-output').innerHTML = '';
+            addConsoleOutput('Console cleared', 'info');
+        }
+
+        // ============ SCREENSHOT FUNCTIONS ============
+        function takeScreenshot() {
+            addLog('Screenshot captured', 'success');
+            const placeholder = document.getElementById('screenshot-placeholder');
+            const imageContainer = document.getElementById('screenshot-image-container');
+            
+            placeholder.style.display = 'none';
+            imageContainer.style.display = 'block';
+            
+            // Track image dimensions
+            setTimeout(() => {
+                const img = document.querySelector('#screenshot-image-container img');
+                if (img && img.complete) {
+                    currentImageDimensions = { width: img.naturalWidth, height: img.naturalHeight };
+                }
+            }, 100);
+        }
+
+        function saveScreenshot() {
+            if (document.getElementById('screenshot-image-container').style.display === 'none') {
+                alert('No screenshot to save. Click Capture first.');
+                return;
+            }
+            addLog('Screenshot saved to downloads', 'success');
+            addConsoleOutput('Screenshot saved: screenshot_DESKTOP-ABC123_20240214_143022.png', 'success');
+        }
+
+        function refreshScreenshot() {
+            if (document.getElementById('screenshot-image-container').style.display === 'block') {
+                addLog('Screenshot refreshed', 'info');
+                addConsoleOutput('Screenshot refreshed', 'info');
+            }
+        }
+
+        function zoomIn() {
+            if (zoomLevel < 300) {
+                zoomLevel += 10;
+                applyZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 10) {
+                zoomLevel -= 10;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 100;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const imageContainer = document.getElementById('screenshot-image-container');
+            const zoomDisplay = document.getElementById('zoom-display');
+
+            if (imageContainer.style.display !== 'none') {
+                const scale = zoomLevel / 100;
+                imageContainer.style.transform = `scale(${scale})`;
+                zoomDisplay.textContent = `${zoomLevel}%`;
+            }
+        }
+
+        // Webcam zoom functions
+        function zoomInWebcam() {
+            if (webcamZoomLevel < 300) {
+                webcamZoomLevel += 10;
+                applyWebcamZoom();
+            }
+        }
+
+        function zoomOutWebcam() {
+            if (webcamZoomLevel > 10) {
+                webcamZoomLevel -= 10;
+                applyWebcamZoom();
+            }
+        }
+
+        function applyWebcamZoom() {
+            const imageContainer = document.getElementById('webcam-image-container');
+            const zoomDisplay = document.getElementById('webcam-zoom-display');
+
+            if (imageContainer.style.display !== 'none') {
+                const scale = webcamZoomLevel / 100;
+                imageContainer.style.transform = `scale(${scale})`;
+                zoomDisplay.textContent = `${webcamZoomLevel}%`;
+            }
+        }
+
+        // Fit functions
+        function fitToScreen() {
+            if (!currentImageDimensions.width || !currentImageDimensions.height) return;
+
+            const viewer = document.getElementById('screenshot-viewer');
+            const containerWidth = viewer.clientWidth - 10;
+            const containerHeight = viewer.clientHeight - 10;
+
+            const widthRatio = containerWidth / currentImageDimensions.width;
+            const heightRatio = containerHeight / currentImageDimensions.height;
+            zoomLevel = Math.min(widthRatio, heightRatio) * 100;
+
+            applyZoom();
+        }
+
+        function fitWebcamToScreen() {
+            if (!webcamImageDimensions.width || !webcamImageDimensions.height) return;
+
+            const viewer = document.getElementById('webcam-viewer');
+            const containerWidth = viewer.clientWidth - 10;
+            const containerHeight = viewer.clientHeight - 10;
+
+            const widthRatio = containerWidth / webcamImageDimensions.width;
+            const heightRatio = containerHeight / webcamImageDimensions.height;
+            webcamZoomLevel = Math.min(widthRatio, heightRatio) * 100;
+
+            applyWebcamZoom();
+        }
+
+        // ============ ZOOM FUNCTIONS ============
+        // Screenshot zoom functions
+        function zoomIn() {
+            if (zoomLevel < 300) {
+                zoomLevel += 10;
+                applyZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 10) {
+                zoomLevel -= 10;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 100;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const imageContainer = document.getElementById('screenshot-image-container');
+            const zoomDisplay = document.getElementById('zoom-display');
+
+            if (imageContainer.style.display !== 'none') {
+                const scale = zoomLevel / 100;
+                imageContainer.style.transform = `scale(${scale})`;
+                zoomDisplay.textContent = `${zoomLevel}%`;
+            }
+        }
+
+        // Webcam zoom functions
+        function zoomInWebcam() {
+            if (webcamZoomLevel < 300) {
+                webcamZoomLevel += 10;
+                applyWebcamZoom();
+            }
+        }
+
+        function zoomOutWebcam() {
+            if (webcamZoomLevel > 10) {
+                webcamZoomLevel -= 10;
+                applyWebcamZoom();
+            }
+        }
+
+        function applyWebcamZoom() {
+            const imageContainer = document.getElementById('webcam-image-container');
+            const zoomDisplay = document.getElementById('webcam-zoom-display');
+
+            if (imageContainer.style.display !== 'none') {
+                const scale = webcamZoomLevel / 100;
+                imageContainer.style.transform = `scale(${scale})`;
+                zoomDisplay.textContent = `${webcamZoomLevel}%`;
+            }
+        }
+
+        // Fit functions
+        function fitToScreen() {
+            if (!currentImageDimensions.width || !currentImageDimensions.height) return;
+
+            const viewer = document.getElementById('screenshot-viewer');
+            const containerWidth = viewer.clientWidth - 10;
+            const containerHeight = viewer.clientHeight - 10;
+
+            const widthRatio = containerWidth / currentImageDimensions.width;
+            const heightRatio = containerHeight / currentImageDimensions.height;
+            zoomLevel = Math.min(widthRatio, heightRatio) * 100;
+
+            applyZoom();
+        }
+
+        function fitWebcamToScreen() {
+            if (!webcamImageDimensions.width || !webcamImageDimensions.height) return;
+
+            const viewer = document.getElementById('webcam-viewer');
+            const containerWidth = viewer.clientWidth - 10;
+            const containerHeight = viewer.clientHeight - 10;
+
+            const widthRatio = containerWidth / webcamImageDimensions.width;
+            const heightRatio = containerHeight / webcamImageDimensions.height;
+            webcamZoomLevel = Math.min(widthRatio, heightRatio) * 100;
+
+            applyWebcamZoom();
+        }
+        function takeWebcamSnapshot() {
+            addLog('Webcam snapshot captured', 'success');
+            const placeholder = document.getElementById('webcam-placeholder');
+            const imageContainer = document.getElementById('webcam-image-container');
+            
+            placeholder.style.display = 'none';
+            imageContainer.style.display = 'block';
+            
+            // Track image dimensions
+            setTimeout(() => {
+                const img = document.querySelector('#webcam-image-container img');
+                if (img && img.complete) {
+                    webcamImageDimensions = { width: img.naturalWidth, height: img.naturalHeight };
+                }
+            }, 100);
+        }
+
+        function saveWebcamImage() {
+            if (document.getElementById('webcam-image-container').style.display === 'none') {
+                alert('No webcam image to save.');
+                return;
+            }
+            addLog('Webcam image saved', 'success');
+        }
+
+        function refreshWebcam() {
+            if (document.getElementById('webcam-image-container').style.display === 'block') {
+                addLog('Webcam image refreshed', 'info');
+                addConsoleOutput('Webcam image refreshed', 'info');
+            }
+        }
+
+        function resetWebcamZoom() {
+            webcamZoomLevel = 100;
+            applyWebcamZoom();
+        }
+
+        // ============ FILE MANAGER FUNCTIONS ============
+        function renderFiles() {
+            const container = document.getElementById('file-list-body');
+            const files = dummyFiles[currentPath] || [];
+            
+            container.innerHTML = files.map(file => `
+                <div class="file-item ${file.type === 'folder' ? 'folder' : ''}" onclick="${file.type === 'folder' ? `navigateToFolder('${file.name}')` : `downloadFile('${file.name}')`}">
+                    <div class="file-icon"><i class="fas ${file.type === 'folder' ? 'fa-folder' : getFileIcon(file.name)}"></i></div>
+                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.name}</div>
+                    <div>${file.size}</div>
+                    <div>${file.type}</div>
+                    <div>${file.date}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('file-count').textContent = `${files.length} items`;
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'txt': 'fa-file-alt', 'md': 'fa-file-alt', 'log': 'fa-file-alt',
+                'pdf': 'fa-file-pdf',
+                'doc': 'fa-file-word', 'docx': 'fa-file-word',
+                'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel',
+                'ppt': 'fa-file-powerpoint', 'pptx': 'fa-file-powerpoint',
+                'png': 'fa-file-image', 'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'gif': 'fa-file-image',
+                'zip': 'fa-file-archive', 'rar': 'fa-file-archive', '7z': 'fa-file-archive',
+                'exe': 'fa-cog', 'msi': 'fa-cog',
+                'html': 'fa-file-code', 'css': 'fa-file-code', 'js': 'fa-file-code', 'py': 'fa-file-code', 'json': 'fa-file-code'
+            };
+            return icons[ext] || 'fa-file';
+        }
+
+        function navigateToFolder(folderName) {
+            if (folderName === '..') {
+                navigateUp();
+                return;
+            }
+            const newPath = currentPath + '\\' + folderName;
+            if (dummyFiles[newPath]) {
+                currentPath = newPath;
+                document.getElementById('current-path').value = currentPath;
+                renderFiles();
+                addLog(`Navigated to: ${currentPath}`, 'info');
+            }
+        }
+
+        function navigateUp() {
+            const parts = currentPath.split('\\');
+            if (parts.length > 1) {
+                parts.pop();
+                currentPath = parts.join('\\') || 'C:\\';
+                document.getElementById('current-path').value = currentPath;
+                renderFiles();
+            }
+        }
+
+        function navigateBack() {
+            navigateUp();
+        }
+
+        function refreshFileManager() {
+            addLog('File manager refreshed', 'info');
+            renderFiles();
+        }
+
+        function downloadFile(filename) {
+            addConsoleOutput(`Downloading ${filename}...`, 'info');
+            setTimeout(() => {
+                addConsoleOutput(`Download complete: ${filename}`, 'success');
+                addLog(`File downloaded: ${filename}`, 'success');
+            }, 800);
+        }
+
+        function simulateUpload() {
+            addLog('Upload simulation triggered', 'warning');
+            addConsoleOutput('Upload feature is simulated in demo mode', 'warning');
+        }
+
+        // ============ LOGS FUNCTIONS ============
+        const systemLogs = [
+            { time: '14:32:18', type: 'info', message: 'MalC2 Simulator initialized' },
+            { time: '14:32:19', type: 'success', message: 'C2 server started on 192.168.1.100:8443' },
+            { time: '14:32:20', type: 'success', message: 'Agent AGT-001 (DESKTOP-ABC123) connected' },
+            { time: '14:32:25', type: 'success', message: 'Agent AGT-002 (LAPTOP-XYZ789) connected' },
+            { time: '14:33:00', type: 'success', message: 'Agent AGT-004 (SRV-FILE-01) connected' },
+            { time: '14:35:42', type: 'warning', message: 'Agent AGT-003 (WS-DEV-001) entered sleep mode' },
+            { time: '14:40:15', type: 'info', message: 'Operator logged in from 192.168.1.5' },
+            { time: '14:42:30', type: 'success', message: 'Screenshot captured from AGT-001' },
+            { time: '14:45:00', type: 'info', message: 'File listing requested from AGT-001' },
+            { time: '14:50:22', type: 'success', message: 'Command executed on AGT-002: whoami' }
+        ];
+
+        function renderLogs() {
+            const container = document.getElementById('logs-output');
+            container.innerHTML = systemLogs.map(log => `
+                <div class="output-line">
+                    <span class="output-timestamp">[${log.time}]</span>
+                    <div class="output-content">
+                        <span class="output-type type-${log.type}">[${log.type.toUpperCase()}]</span>
+                        <span class="type-output">${log.message}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addLog(message, type = 'info') {
+            const now = new Date();
+            const time = now.toTimeString().slice(0, 8);
+            systemLogs.push({ time, type, message });
+            if (systemLogs.length > 50) systemLogs.shift();
+            renderLogs();
+        }
+
+        function clearLogs() {
+            systemLogs.length = 0;
+            renderLogs();
+            addLog('Logs cleared', 'info');
+        }
+
+        function exportLogs() {
+            addLog('Logs exported to file', 'success');
+            addConsoleOutput('System logs exported: logs_20240214_145030.txt', 'success');
+        }
+
+        // ============ SETTINGS FUNCTIONS ============
+        function toggleSettings() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('settings-panel').classList.add('active');
+        }
+
+        function startUptimeCounter() {
+            setInterval(() => {
+                serverUptime.seconds++;
+                if (serverUptime.seconds >= 60) {
+                    serverUptime.seconds = 0;
+                    serverUptime.minutes++;
+                }
+                if (serverUptime.minutes >= 60) {
+                    serverUptime.minutes = 0;
+                    serverUptime.hours++;
+                }
+                const uptime = `${String(serverUptime.hours).padStart(2, '0')}:${String(serverUptime.minutes).padStart(2, '0')}:${String(serverUptime.seconds).padStart(2, '0')}`;
+                const el = document.getElementById('server-uptime');
+                if (el) el.textContent = uptime;
+            }, 1000);
+        }
+
+        function simulateBuild() {
+            const logContainer = document.getElementById('build-log');
+            const steps = [
+                { msg: 'Initializing build environment...', type: 'info', delay: 500 },
+                { msg: 'Compiling client source code...', type: 'info', delay: 1500 },
+                { msg: 'Configuring connection parameters...', type: 'info', delay: 2500 },
+                { msg: 'Applying obfuscation...', type: 'warning', delay: 3500 },
+                { msg: 'Linking dependencies...', type: 'info', delay: 4500 },
+                { msg: 'Build completed successfully!', type: 'success', delay: 5500 },
+                { msg: 'Output: client_192.168.1.100_8443.exe (2.4 MB)', type: 'success', delay: 6000 }
+            ];
+
+            logContainer.innerHTML = '';
+            
+            steps.forEach((step, i) => {
+                setTimeout(() => {
+                    const line = document.createElement('div');
+                    line.className = `log-line ${step.type}`;
+                    line.textContent = `[${new Date().toTimeString().slice(0,8)}] ${step.msg}`;
+                    logContainer.appendChild(line);
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                }, step.delay);
+            });
+
+            addLog('Client build initiated', 'info');
+        }
+    </script>
+</body>
+</html>
