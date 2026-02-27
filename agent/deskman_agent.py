@@ -69,14 +69,74 @@ class DeskManAgent:
         self.running = True
 
     def _load_or_create_agent_id(self) -> str:
+        """Load existing agent ID or generate one unique to this machine.
+
+        The ID is derived from hardware identifiers (machine-id / MAC address)
+        so the same physical PC always gets the same agent ID, even if the
+        EXE is re-downloaded or the ID file is deleted.  Different PCs will
+        always produce different IDs.
+        """
         id_path = os.path.join(os.path.expanduser("~"), AGENT_ID_FILE)
         if os.path.exists(id_path):
             with open(id_path, "r") as f:
-                return f.read().strip()
-        agent_id = f"AGT-{uuid.uuid4().hex[:8].upper()}"
-        with open(id_path, "w") as f:
-            f.write(agent_id)
+                stored = f.read().strip()
+                if stored:
+                    return stored
+
+        # Build a stable machine fingerprint
+        fingerprint = self._get_machine_fingerprint()
+        agent_id = f"AGT-{fingerprint[:8].upper()}"
+
+        try:
+            with open(id_path, "w") as f:
+                f.write(agent_id)
+        except OSError:
+            pass  # non-fatal: ID still works, just won't persist
         return agent_id
+
+    @staticmethod
+    def _get_machine_fingerprint() -> str:
+        """Produce a deterministic hex string unique to this machine."""
+        import hashlib
+
+        parts = []
+
+        # 1. Try OS-level machine ID (Linux: /etc/machine-id, Windows: MachineGuid)
+        if platform.system() == "Windows":
+            try:
+                import winreg
+                reg = winreg.OpenKey(
+                    winreg.HKEY_LOCAL_MACHINE,
+                    r"SOFTWARE\Microsoft\Cryptography",
+                )
+                guid, _ = winreg.QueryValueEx(reg, "MachineGuid")
+                winreg.CloseKey(reg)
+                parts.append(guid)
+            except Exception:
+                pass
+        else:
+            for p in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
+                try:
+                    with open(p) as f:
+                        parts.append(f.read().strip())
+                    break
+                except OSError:
+                    pass
+
+        # 2. Fallback: MAC address of the primary NIC
+        try:
+            mac = uuid.getnode()
+            if mac and mac != uuid.getnode():
+                pass  # getnode() may return random if no MAC found
+            parts.append(str(mac))
+        except Exception:
+            pass
+
+        # 3. Hostname as additional entropy
+        parts.append(platform.node())
+
+        raw = "|".join(parts)
+        return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
     def _get_username(self) -> str:
         try:

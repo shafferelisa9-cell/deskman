@@ -848,6 +848,23 @@ function _buildLogLine(container, msg, type) {
     container.scrollTop = container.scrollHeight;
 }
 
+function _formatBuildCommand(url, key, name, noconsole) {
+    // Generate a PowerShell one-liner that auto-downloads the build script and runs it.
+    // The user pastes this into any Windows PowerShell — no files needed beforehand.
+    const repo = DESKMAN_CONFIG.GITHUB_REPO;
+    const branch = DESKMAN_CONFIG.GITHUB_BRANCH;
+    const scriptUrl = `https://raw.githubusercontent.com/${repo}/${branch}/agent/build_remote.ps1`;
+    const ncFlag = noconsole ? ' -NoConsole' : '';
+
+    return `powershell -ExecutionPolicy Bypass -Command "& { ` +
+        `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ` +
+        `$s = Join-Path $env:TEMP 'deskman_build.ps1'; ` +
+        `Invoke-WebRequest -Uri '${scriptUrl}' -OutFile $s -UseBasicParsing; ` +
+        `& $s -Url '${url}' -Key '${key}' -Name '${name}' -Branch '${branch}' -Repo '${repo}'${ncFlag}; ` +
+        `Remove-Item $s -ErrorAction SilentlyContinue ` +
+        `}"`;
+}
+
 async function handleBuildAgent() {
     const logContainer = document.getElementById('build-log');
     if (!logContainer) return;
@@ -861,41 +878,45 @@ async function handleBuildAgent() {
     }
 
     logContainer.innerHTML = '';
-    const buildCmd = _formatBuildCommand(url, key, name, noconsole);
 
     const steps = [
         { msg: 'Validating configuration...', type: 'info', delay: 200 },
         { msg: `Supabase URL: ${url}`, type: 'info', delay: 500 },
         { msg: `Executable name: ${name}.exe`, type: 'info', delay: 800 },
         { msg: noconsole ? 'Console: hidden (silent mode)' : 'Console: visible', type: 'info', delay: 1000 },
-        { msg: 'Writing embedded_config.py with credentials...', type: 'info', delay: 1500 },
-        { msg: 'Resolving dependencies: supabase, psutil, mss, Pillow, opencv-python...', type: 'info', delay: 2200 },
-        { msg: 'Running PyInstaller --onefile to compile standalone EXE...', type: 'warning', delay: 3000 },
-        { msg: 'Bundling Python interpreter + all packages into single binary...', type: 'info', delay: 4000 },
-        { msg: 'Stripping embedded_config.py credentials from source (security cleanup)...', type: 'info', delay: 5000 },
-        { msg: 'Build complete!', type: 'success', delay: 5800 },
-        { msg: `Output: agent/dist/${name}.exe`, type: 'success', delay: 6200 },
-        { msg: 'The EXE has Supabase credentials embedded — just run it on any Windows PC.', type: 'success', delay: 6600 },
+        { msg: 'Generated one-liner PowerShell build command.', type: 'success', delay: 1500 },
+        { msg: 'The command will automatically:', type: 'info', delay: 2000 },
+        { msg: '  1. Download agent source from GitHub', type: 'info', delay: 2300 },
+        { msg: '  2. Embed your Supabase credentials', type: 'info', delay: 2600 },
+        { msg: '  3. Install all dependencies via pip', type: 'info', delay: 2900 },
+        { msg: '  4. Compile standalone EXE via PyInstaller', type: 'info', delay: 3200 },
+        { msg: '  5. Copy EXE to Desktop/DeskMan_Agent/', type: 'info', delay: 3500 },
+        { msg: '  6. Open the output folder', type: 'info', delay: 3800 },
+        { msg: '', type: 'info', delay: 4200 },
+        { msg: 'Each PC that runs the EXE gets its own unique Agent ID.', type: 'success', delay: 4500 },
+        { msg: 'Copy the EXE to any Windows PC — no Python needed on the target.', type: 'success', delay: 4900 },
     ];
 
     steps.forEach((step) => {
         setTimeout(() => _buildLogLine(logContainer, step.msg, step.type), step.delay);
     });
 
-    // After the visual steps, show the CLI command to actually run
+    // Show the command after the steps
+    const buildCmd = _formatBuildCommand(url, key, name, noconsole);
     setTimeout(() => {
         _buildLogLine(logContainer, '', 'info');
-        _buildLogLine(logContainer, 'To build on your machine, run this command in the agent/ directory:', 'info');
-        _buildLogLine(logContainer, buildCmd, 'info');
-    }, 7200);
+        _buildLogLine(logContainer, 'Paste this into PowerShell on a Windows PC with Python installed:', 'warning');
 
-    await insertEventLog(`Agent EXE build initiated (${name}.exe)`, 'info');
-}
+        // Render the command in a selectable pre block
+        const pre = document.createElement('div');
+        pre.className = 'log-line info';
+        pre.style.cssText = 'word-break:break-all;user-select:all;cursor:text;white-space:pre-wrap;font-size:0.7rem;';
+        pre.textContent = buildCmd;
+        logContainer.appendChild(pre);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }, 5500);
 
-function _formatBuildCommand(url, key, name, noconsole) {
-    let cmd = `python build.py --url "${url}" --key "${key}" --name "${name}"`;
-    if (noconsole) cmd += ' --noconsole';
-    return cmd;
+    await insertEventLog(`Agent EXE build command generated (${name}.exe)`, 'info');
 }
 
 function copyBuildCommand() {
@@ -909,10 +930,9 @@ function copyBuildCommand() {
     const cmd = _formatBuildCommand(url, key, name, noconsole);
 
     navigator.clipboard.writeText(cmd).then(() => {
-        addConsoleOutput('Build command copied to clipboard.', 'success');
+        addConsoleOutput('PowerShell build command copied to clipboard. Paste into any Windows PowerShell.', 'success');
         addLocalLog('Build command copied to clipboard', 'info');
     }).catch(() => {
-        // Fallback for non-secure contexts
         const ta = document.createElement('textarea');
         ta.value = cmd;
         ta.style.position = 'fixed';
@@ -921,7 +941,7 @@ function copyBuildCommand() {
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        addConsoleOutput('Build command copied to clipboard.', 'success');
+        addConsoleOutput('PowerShell build command copied to clipboard. Paste into any Windows PowerShell.', 'success');
         addLocalLog('Build command copied to clipboard', 'info');
     });
 }
