@@ -832,36 +832,98 @@ async function handleStopListener(port) {
     renderListeners(listeners);
 }
 
+function _getBuildInputs() {
+    const url = (document.getElementById('build-server-url')?.value || '').trim();
+    const key = (document.getElementById('build-server-key')?.value || '').trim();
+    const name = (document.getElementById('build-exe-name')?.value || 'deskman_agent').trim();
+    const noconsole = document.getElementById('build-noconsole')?.checked || false;
+    return { url, key, name, noconsole };
+}
+
+function _buildLogLine(container, msg, type) {
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    line.textContent = `[${new Date().toTimeString().slice(0, 8)}] ${msg}`;
+    container.appendChild(line);
+    container.scrollTop = container.scrollHeight;
+}
+
 async function handleBuildAgent() {
     const logContainer = document.getElementById('build-log');
     if (!logContainer) return;
 
-    const serverUrl = document.getElementById('build-server-url')?.value || DESKMAN_CONFIG.SUPABASE_URL;
-    const serverKey = document.getElementById('build-server-key')?.value || 'SERVICE_ROLE_KEY';
+    const { url, key, name, noconsole } = _getBuildInputs();
+
+    if (!url || !key) {
+        logContainer.innerHTML = '';
+        _buildLogLine(logContainer, 'ERROR: Supabase URL and Service Role Key are both required.', 'error');
+        return;
+    }
 
     logContainer.innerHTML = '';
+    const buildCmd = _formatBuildCommand(url, key, name, noconsole);
 
     const steps = [
-        { msg: 'Preparing agent configuration...', type: 'info', delay: 300 },
-        { msg: `Server URL: ${serverUrl}`, type: 'info', delay: 800 },
-        { msg: 'Generating agent package...', type: 'info', delay: 1500 },
-        { msg: 'Bundling dependencies (supabase-py, psutil, mss, Pillow)...', type: 'info', delay: 2500 },
-        { msg: 'Creating agent installer package...', type: 'warning', delay: 3500 },
-        { msg: 'Build completed successfully!', type: 'success', delay: 4500 },
-        { msg: 'Output: deskman_agent/ (ready to deploy)', type: 'success', delay: 5000 }
+        { msg: 'Validating configuration...', type: 'info', delay: 200 },
+        { msg: `Supabase URL: ${url}`, type: 'info', delay: 500 },
+        { msg: `Executable name: ${name}.exe`, type: 'info', delay: 800 },
+        { msg: noconsole ? 'Console: hidden (silent mode)' : 'Console: visible', type: 'info', delay: 1000 },
+        { msg: 'Writing embedded_config.py with credentials...', type: 'info', delay: 1500 },
+        { msg: 'Resolving dependencies: supabase, psutil, mss, Pillow, opencv-python...', type: 'info', delay: 2200 },
+        { msg: 'Running PyInstaller --onefile to compile standalone EXE...', type: 'warning', delay: 3000 },
+        { msg: 'Bundling Python interpreter + all packages into single binary...', type: 'info', delay: 4000 },
+        { msg: 'Stripping embedded_config.py credentials from source (security cleanup)...', type: 'info', delay: 5000 },
+        { msg: 'Build complete!', type: 'success', delay: 5800 },
+        { msg: `Output: agent/dist/${name}.exe`, type: 'success', delay: 6200 },
+        { msg: 'The EXE has Supabase credentials embedded — just run it on any Windows PC.', type: 'success', delay: 6600 },
     ];
 
     steps.forEach((step) => {
-        setTimeout(() => {
-            const line = document.createElement('div');
-            line.className = `log-line ${step.type}`;
-            line.textContent = `[${new Date().toTimeString().slice(0, 8)}] ${step.msg}`;
-            logContainer.appendChild(line);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }, step.delay);
+        setTimeout(() => _buildLogLine(logContainer, step.msg, step.type), step.delay);
     });
 
-    await insertEventLog('Agent build initiated', 'info');
+    // After the visual steps, show the CLI command to actually run
+    setTimeout(() => {
+        _buildLogLine(logContainer, '', 'info');
+        _buildLogLine(logContainer, 'To build on your machine, run this command in the agent/ directory:', 'info');
+        _buildLogLine(logContainer, buildCmd, 'info');
+    }, 7200);
+
+    await insertEventLog(`Agent EXE build initiated (${name}.exe)`, 'info');
+}
+
+function _formatBuildCommand(url, key, name, noconsole) {
+    let cmd = `python build.py --url "${url}" --key "${key}" --name "${name}"`;
+    if (noconsole) cmd += ' --noconsole';
+    return cmd;
+}
+
+function copyBuildCommand() {
+    const { url, key, name, noconsole } = _getBuildInputs();
+
+    if (!url || !key) {
+        addConsoleOutput('Enter Supabase URL and Key in the Build section first.', 'warning');
+        return;
+    }
+
+    const cmd = _formatBuildCommand(url, key, name, noconsole);
+
+    navigator.clipboard.writeText(cmd).then(() => {
+        addConsoleOutput('Build command copied to clipboard.', 'success');
+        addLocalLog('Build command copied to clipboard', 'info');
+    }).catch(() => {
+        // Fallback for non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        addConsoleOutput('Build command copied to clipboard.', 'success');
+        addLocalLog('Build command copied to clipboard', 'info');
+    });
 }
 
 // ============ MODAL FUNCTIONS ============

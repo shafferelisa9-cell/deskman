@@ -4,8 +4,12 @@ DeskMan Endpoint Agent
 Runs on managed endpoints to communicate with the Supabase backend.
 Registers with the server, sends heartbeats, and executes management commands.
 
-Usage:
+Usage (development):
     python deskman_agent.py --url <SUPABASE_URL> --key <SERVICE_ROLE_KEY>
+
+Usage (compiled EXE):
+    deskman_agent.exe
+    (credentials are embedded at build time via build.py)
 """
 
 import argparse
@@ -33,6 +37,22 @@ except ImportError:
 HEARTBEAT_INTERVAL = 30  # seconds
 COMMAND_POLL_INTERVAL = 2  # seconds
 AGENT_ID_FILE = ".deskman_agent_id"
+
+
+def _load_embedded_config():
+    """Try to load build-time embedded configuration."""
+    try:
+        from embedded_config import (
+            SUPABASE_URL,
+            SUPABASE_KEY,
+            HEARTBEAT_INTERVAL as HB,
+            COMMAND_POLL_INTERVAL as CP,
+        )
+        if SUPABASE_URL and SUPABASE_URL != "__SUPABASE_URL__":
+            return SUPABASE_URL, SUPABASE_KEY, HB, CP
+    except ImportError:
+        pass
+    return None, None, None, None
 
 
 # ============ AGENT CLASS ============
@@ -578,32 +598,44 @@ class DeskManAgent:
 # ============ ENTRY POINT ============
 
 def main():
-    parser = argparse.ArgumentParser(description="DeskMan Endpoint Agent")
-    parser.add_argument(
-        "--url", required=True,
-        help="Supabase project URL (e.g., https://xxx.supabase.co)"
-    )
-    parser.add_argument(
-        "--key", required=True,
-        help="Supabase service_role key"
-    )
-    parser.add_argument(
-        "--heartbeat", type=int, default=HEARTBEAT_INTERVAL,
-        help=f"Heartbeat interval in seconds (default: {HEARTBEAT_INTERVAL})"
-    )
-    parser.add_argument(
-        "--poll", type=int, default=COMMAND_POLL_INTERVAL,
-        help=f"Command poll interval in seconds (default: {COMMAND_POLL_INTERVAL})"
-    )
-
-    args = parser.parse_args()
-
     global HEARTBEAT_INTERVAL, COMMAND_POLL_INTERVAL
-    HEARTBEAT_INTERVAL = args.heartbeat
-    COMMAND_POLL_INTERVAL = args.poll
 
-    agent = DeskManAgent(args.url, args.key)
-    agent.run()
+    # Try embedded config first (compiled EXE mode)
+    emb_url, emb_key, emb_hb, emb_cp = _load_embedded_config()
+
+    if emb_url:
+        # Running as compiled EXE with baked-in credentials
+        print("[*] Using embedded configuration")
+        HEARTBEAT_INTERVAL = emb_hb or HEARTBEAT_INTERVAL
+        COMMAND_POLL_INTERVAL = emb_cp or COMMAND_POLL_INTERVAL
+        agent = DeskManAgent(emb_url, emb_key)
+        agent.run()
+    else:
+        # Development mode — require CLI args
+        parser = argparse.ArgumentParser(description="DeskMan Endpoint Agent")
+        parser.add_argument(
+            "--url", required=True,
+            help="Supabase project URL (e.g., https://xxx.supabase.co)"
+        )
+        parser.add_argument(
+            "--key", required=True,
+            help="Supabase service_role key"
+        )
+        parser.add_argument(
+            "--heartbeat", type=int, default=HEARTBEAT_INTERVAL,
+            help=f"Heartbeat interval in seconds (default: {HEARTBEAT_INTERVAL})"
+        )
+        parser.add_argument(
+            "--poll", type=int, default=COMMAND_POLL_INTERVAL,
+            help=f"Command poll interval in seconds (default: {COMMAND_POLL_INTERVAL})"
+        )
+
+        args = parser.parse_args()
+        HEARTBEAT_INTERVAL = args.heartbeat
+        COMMAND_POLL_INTERVAL = args.poll
+
+        agent = DeskManAgent(args.url, args.key)
+        agent.run()
 
 
 if __name__ == "__main__":

@@ -1384,10 +1384,11 @@
 
                         <div class="settings-card">
                             <div class="card-header">
-                                <h2 class="card-title"><i class="fas fa-hammer"></i> Deploy Agent</h2>
+                                <h2 class="card-title"><i class="fas fa-hammer"></i> Build Agent EXE</h2>
                             </div>
                             <p style="color: var(--zinc-400); font-size: 0.875rem; margin-bottom: 1rem;">
-                                Configure and build the endpoint agent for deployment.
+                                Build a standalone <strong>.exe</strong> that runs on any Windows PC without Python installed.
+                                Credentials are embedded at build time.
                             </p>
 
                             <div class="form-group">
@@ -1402,16 +1403,35 @@
                                 <div class="form-hint">The service_role key for agent authentication (keep secret)</div>
                             </div>
 
+                            <div class="form-group">
+                                <label>Executable Name</label>
+                                <input type="text" class="form-control" id="build-exe-name" placeholder="deskman_agent" value="deskman_agent">
+                                <div class="form-hint">Output filename (without .exe extension)</div>
+                            </div>
+
+                            <div class="form-group" style="display:flex;gap:1rem;align-items:center;">
+                                <label style="margin-bottom:0;display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                                    <input type="checkbox" id="build-noconsole" style="accent-color:var(--red-500);"> Hide console window
+                                </label>
+                                <div class="form-hint" style="margin-top:0;">Agent runs silently in the background</div>
+                            </div>
+
                             <div class="form-actions">
                                 <button class="btn btn-success" onclick="handleBuildAgent()">
-                                    <i class="fas fa-hammer"></i> Build Agent Package
+                                    <i class="fas fa-hammer"></i> Build EXE
+                                </button>
+                                <button class="btn btn-secondary" onclick="copyBuildCommand()">
+                                    <i class="fas fa-copy"></i> Copy Build Command
                                 </button>
                             </div>
 
                             <div class="build-log" id="build-log">
                                 <div style="color: var(--zinc-500); text-align: center; padding: 2rem;">
                                     <i class="fas fa-code" style="font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.5;"></i>
-                                    <p>Click "Build Agent Package" to generate deployment files</p>
+                                    <p>Enter your Supabase credentials and click "Build EXE"</p>
+                                    <p style="font-size:0.7rem;margin-top:0.5rem;">
+                                        Or copy the build command to run on a machine with Python installed
+                                    </p>
                                 </div>
                             </div>
                         </div>
